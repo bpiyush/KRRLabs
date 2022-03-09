@@ -98,14 +98,17 @@ def check_solution(sudoku, k, solution):
     """
 
     # Check if each row in the solution has different values
+    print("here")
     for row in solution:
         if set(row) != set(range(1, k**2+1)):
+            print("Failed uniqueness in column constraint")
             return False
     # Check if each row in the solution has different values
     for col in range(0, k**2):
         if {solution[row][col]
                 for row in range(0, k**2)
            } != set(range(1, k**2+1)):
+            print("Failed uniqueness in row constraint")
             return False
     # Check the 'bomb' constraints
     for row1, col1 in itertools.product(range(0, k**2), repeat=2):
@@ -115,6 +118,7 @@ def check_solution(sudoku, k, solution):
                 col2 = col1 + col_add
                 if 0 <= row2 < k**2 and 0 <= col2 < k**2:
                     if solution[row1][col1] == solution[row2][col2]:
+                        print("Failed bomb constraint")
                         return False
     # Check the 'knight' constraints
     for row1, col1 in itertools.product(range(0, k**2), repeat=2):
@@ -125,6 +129,7 @@ def check_solution(sudoku, k, solution):
                 col2 = col1 + col_add
                 if 0 <= row2 < k**2 and 0 <= col2 < k**2:
                     if solution[row1][col1] == solution[row2][col2]:
+                        print("Failed knights constraint")
                         return False
     # Check if each block in the solution has different values
     for block_row, block_col in itertools.product(range(0, k), repeat=2):
@@ -132,10 +137,12 @@ def check_solution(sudoku, k, solution):
                 for inner_row, inner_col
                 in itertools.product(range(0, k), repeat=2)
            } != set(range(1, k**2+1)):
+            print("Failed block constraint")
             return False
     # Check if the solution matches the input
     for row, col in itertools.product(range(0, k**2), repeat=2):
         if sudoku[row][col] != 0 and sudoku[row][col] != solution[row][col]:
+            print("Failed input constraint")
             return False
     # If all checks passed, return True
     return True
@@ -146,7 +153,6 @@ def check_num_solutions(sudoku, k, num_solutions, solver):
     Checks if a given solving algorithm produces the right number of correct
     solutions for a given BombKnightSudoku puzzle.
     """
-
     # Iterate over num_solutions+1 solutions, check if each is correct,
     # and add their string representations to a set
     solution_set = set()
