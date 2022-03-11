@@ -161,6 +161,9 @@ def check_num_solutions(sudoku, k, num_solutions, solver):
         solution_set.add(pretty_repr(solution, k))
 
     # Return whether the set contains exactly the right amount of solutions
+    print("Number of expected solutions:", num_solutions)
+    print("Number of solutions found:", len(solution_set))
+
     return len(solution_set) == num_solutions
 
 
