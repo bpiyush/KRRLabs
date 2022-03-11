@@ -98,7 +98,6 @@ def check_solution(sudoku, k, solution):
     """
 
     # Check if each row in the solution has different values
-    print("here")
     for row in solution:
         if set(row) != set(range(1, k**2+1)):
             print("Failed uniqueness in column constraint")
