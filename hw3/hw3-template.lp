@@ -3,8 +3,8 @@
 %%% KRR 2022, HOMEWORK ASSIGNMENT 3 %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Name:             ...
-Student number:   ...
+Name:             Piyush Bagad
+Student number:   13677640
 
 Name:             ...
 Student number:   ...
@@ -21,6 +21,22 @@ INPUT REPRESENTATION:
 % Represent the nodes and edges of the map using node/1 and edge/2.
 node(1..13).
 edge(1,2).
+edge(2,3).
+edge(3,4).
+edge(4,5).
+edge(5,6).
+edge(6,7).
+edge(7,8).
+edge(8,9).
+edge(9,10).
+edge(10,11).
+edge(11,12).
+edge(12,13).
+edge(7,13).
+edge(5,8).
+edge(5,9).
+edge(3,9).
+edge(3,10).
 % ...
 
 % Edges are undirected, so include their reverse
