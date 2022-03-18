@@ -34,20 +34,69 @@ edge(X,Y) :- edge(Y,X).
 charging_station(node(2)).
 charging_station(node(4)).
 
-% Represent delivery location using delivery_location/1.
-delivery_location(node(1)).
-delivery_location(node(6)).
+% Represent delivery location using delivery_location/2.
+% delivery_location(node(X), R). where R denotes requirements.
+delivery_location(node(1), 2).
+delivery_location(node(6), 2).
 
-% Represent warehouse location using warehouse_location/1.
-warehouse_location(node(7)).
+% Represent warehouse location using warehouse_location/2.
+% warehouse_location(node(X), C). where C denotes capacity.
+warehouse_location(node(7), 5).
+
+% Represent parking location using parking_location/1.
+parking_location(node(11)).
+parking_location(node(12)).
+parking_location(node(13)).
 
 % Represent the trucks using truck/1.
 truck(1..3).
 
+% Define a tracker that tracks state of a truck.
+% tracker(Truck, Time, Node, CurLoad, MaxLoad, CurBattery, MaxBattery).
+%   - Truck is the truck
+%   - Time is the time the truck is at the current node
+%   - Node is the current node of the truck
+%   - CurLoad is the current load of the truck
+%   - MaxLoad is the maximum load of the truck
+%   - CurBattery is the current battery of the truck
+%   - MaxBattery is the maximum battery of the truck
+
+% Define initial state of the three trucks.
+tracker(truck(1), 1, node(11), 0, 1, 6, 10).
+tracker(truck(2), 1, node(12), 0, 2, 7, 10).
+tracker(truck(3), 1, node(13), 0, 3, 10, 10).
 
 % define constants
-#const n=2.
-#const m=5.
+#const t=25.
+
+% Define time
+time(1..t).
+
+%*
+ACTIONS:
+- Represent the possible actions that each truck can take
+
+[EXPLAIN YOUR CODE USING SHORT INLINE COMMENTS]
+*%
+
+% For each truck, define the possible actions.
+action(wait(I);move(I),load(I);unload(I);charge(I)) :- truck(I).
+
+
+% Define conditions to check if a node is occupied by a truck.
+node_occupied(T, Node) :- time(T), tracker(Truck, _, Node, _, _, _, _).
+
+% Define conditions to check if an edge is occupied by a truck.
+% edge_occupied(Edge) :- edge(X, Y), tracker(Truck, _, X, _, _, _, _), edge(X, Y).
+% Edge E is occupied if there is a truck Tr at time Ti at node X and edge(X, Y) is true.
+% Edge E is occupied if either of the nodes of edge E is occupied and either of the trucks moving. 
+
+
+
+% Display answer set
+#show tracker/7.
+#show action/1.
+
 
 %*
 PRETTY PRINTING
@@ -68,7 +117,7 @@ def filter_atom(model, atom):
     atoms = [a for a in symbols if a.name == atom]
     return atoms
 
-def on_model(model):
+def on_model(model, verbose=False):
     actions = dict()
     print("Hello World!")
     
@@ -102,21 +151,8 @@ def on_model(model):
         else:
             node_color.append('lightgray')
     
-    show_graph(G, node_color)
-
-    import ipdb; ipdb.set_trace()
-
-    for atom in model.symbols(atoms=True):
-        if atom.name == "do":
-            time = atom.arguments[1].number
-            action = str(atom.arguments[0])
-            actions[time] = action
-
-    time_steps = [time for time in actions]
-    time_steps.sort()
-    print("Pretty printed answer set:")
-    for time in time_steps:
-        print(f"- At time step {time} do: {actions[time]}")
+    if verbose:
+        show_graph(G, node_color)
 
 def main(prg):
     prg.ground([("base", [])])
