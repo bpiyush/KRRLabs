@@ -95,6 +95,9 @@ action(move(N)) :- node(N).
 % load      : load a truck at a node
 action(load).
 
+% unload    : unload a truck at a node
+action(unload).
+
 
 %*
 GENERATE A SEQUENCE OF ACTIONS:
@@ -142,10 +145,13 @@ truck_battery(3, 1, 10, 10).
 
 % For now, we do not care about the state of warehouse, deliveries, etc.
 % ::::::: WAREHOUSES ::::::: %
-% - warehouse_load(W, T, L) : the load of warehouse node W at time T is L
+% - warehouse_tracker(W, T, L) : the load of warehouse node W at time T is L
 warehouse_tracker(7, 1, 5).
 
 % ::::::: DELIVERIES ::::::: %
+% - delivery_tracker(D, T, R) : the requirement of delivery node D at time T is R
+delivery_tracker(1, 1, 2).
+delivery_tracker(6, 1, 2).
 
 
 
@@ -170,6 +176,7 @@ truck_load(V, T + 1, L, Lmax) :- do(V, T, wait), truck_load(V, T, L, Lmax).
 warehouse_tracker(N, T + 1, L) :- do(V, T, wait), warehouse_tracker(N, T, L).
 
 % Effect of delivery-related states
+delivery_tracker(N, T + 1, L) :- do(V, T, wait), delivery_tracker(N, T, L).
 
 % ::::::::: ACTION: MOVE ::::::::: %
 
@@ -185,6 +192,7 @@ truck_load(V, T + 1, L, Lmax) :- do(V, T, move(M)), truck_load(V, T, L, Lmax).
 warehouse_tracker(N, T + 1, L) :- do(V, T, move(M)), warehouse_tracker(N, T, L).
 
 % Effect of delivery-related states
+delivery_tracker(N, T + 1, L) :- do(V, T, move(M)), delivery_tracker(N, T, L).
 
 % ::::::::: ACTION: LOAD ::::::::: %
 
@@ -197,6 +205,22 @@ truck_load(V, T + 1, L + 1, Lmax) :- do(V, T, load), truck_load(V, T, L, Lmax).
 % Effect of warehouse-related states
 warehouse_tracker(N, T + 1, L - 1) :- do(V, T, load), warehouse_tracker(N, T, L).
 
+% Effect of delivery-related states
+delivery_tracker(N, T + 1, L) :- do(V, T, load), delivery_tracker(N, T, L).
+
+
+% ::::::::: ACTION: UNLOAD ::::::::: %
+
+% Effect on truck-related states
+truck_location(V, T + 1, N) :- do(V, T, unload), truck_location(V, T, N).
+truck_battery(V, T + 1, B, Bmax) :- do(V, T, unload), truck_battery(V, T, B, Bmax).
+truck_load(V, T + 1, L - 1, Lmax) :- do(V, T, unload), truck_load(V, T, L, Lmax).
+
+% Effect of warehouse-related states
+warehouse_tracker(N, T + 1, L) :- do(V, T, unload), warehouse_tracker(N, T, L).
+
+% Effect of delivery-related states
+delivery_tracker(N, T + 1, R - 1) :- do(V, T, unload), delivery_tracker(N, T, R).
 
 
 %*
@@ -221,6 +245,12 @@ Explanation (max 100 words):
 :- do(V, T, load), warehouse_tracker(N, T, L), L < 1.
 :- do(V, T, load), truck_load(V, T, L, Lmax), L > Lmax.
 :- do(V, T, load), warehouse_tracker(N, T, L), not warehouse_location(N).
+
+% ::::::::: ACTION: UNLOAD ::::::::: %
+% If it is at a delivery location that still needs some packages,
+% and the truck has at least one package to be unloaded
+:- do(V, T, unload), delivery_tracker(N, T, R), R < 1. % if requirement is 0, then you cannot unload
+:- do(V, T, unload), truck_load(V, T, L, Lmax), L < 1. % if load is 0, then you cannot unload
 
 
 % ::::::::: ADDITIONAL CONSTRAINTS ::::::::: %
