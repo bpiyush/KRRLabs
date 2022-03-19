@@ -47,14 +47,12 @@ edge(X,Y) :- edge(Y,X).
 charging_station(N) : node(N), N = 2.
 charging_station(N) : node(N), N = 4.
 
-% Represent delivery location using delivery_location/2.
-% delivery_location(N, R). where N is a node and R denotes requirements.
-delivery_location(N, 2) : node(N), N = 1.
-delivery_location(N, 2) : node(N), N = 6.
+% Represent delivery location using delivery_location/1.
+delivery_location(N) : node(N), N = 1.
+delivery_location(N) : node(N), N = 6.
 
-% Represent warehouse location using warehouse_location/2.
-% warehouse_location(N, C). where N is a node and C denotes capacity.
-warehouse_location(N, 5) : node(N), N = 2.
+% Represent warehouse location using warehouse_location/1.
+warehouse_location(N) : node(N), N = 7.
 
 % Represent parking location using parking_location/1.
 parking_location(N) : node(N), N = 11.
@@ -93,6 +91,9 @@ action(wait).
 
 % move(N)   : move a truck to node N
 action(move(N)) :- node(N).
+
+% load      : load a truck at a node
+action(load).
 
 
 %*
@@ -141,6 +142,8 @@ truck_battery(3, 1, 10, 10).
 
 % For now, we do not care about the state of warehouse, deliveries, etc.
 % ::::::: WAREHOUSES ::::::: %
+% - warehouse_load(W, T, L) : the load of warehouse node W at time T is L
+warehouse_tracker(7, 1, 5).
 
 % ::::::: DELIVERIES ::::::: %
 
@@ -164,6 +167,7 @@ truck_battery(V, T + 1, B, Bmax) :- do(V, T, wait), truck_battery(V, T, B, Bmax)
 truck_load(V, T + 1, L, Lmax) :- do(V, T, wait), truck_load(V, T, L, Lmax).
 
 % Effect of warehouse-related states
+warehouse_tracker(N, T + 1, L) :- do(V, T, wait), warehouse_tracker(N, T, L).
 
 % Effect of delivery-related states
 
@@ -171,15 +175,28 @@ truck_load(V, T + 1, L, Lmax) :- do(V, T, wait), truck_load(V, T, L, Lmax).
 
 % Effect on truck-related states
 % Location of the truck changes
-truck_location(V, T + 1, M) :- do(V, T, move(M)), truck_location(V, T, N).
 % Battery of the truck decreases
-truck_battery(V, T + 1, B - 1, Bmax) :- do(V, T, move(M)), truck_battery(V, T, B, Bmax).
 % Load of the truck does not change
+truck_location(V, T + 1, M) :- do(V, T, move(M)), truck_location(V, T, N).
+truck_battery(V, T + 1, B - 1, Bmax) :- do(V, T, move(M)), truck_battery(V, T, B, Bmax).
 truck_load(V, T + 1, L, Lmax) :- do(V, T, move(M)), truck_load(V, T, L, Lmax).
 
 % Effect of warehouse-related states
+warehouse_tracker(N, T + 1, L) :- do(V, T, move(M)), warehouse_tracker(N, T, L).
 
 % Effect of delivery-related states
+
+% ::::::::: ACTION: LOAD ::::::::: %
+
+% Effect on truck-related states
+% Location, load, battery of the truck remain the same
+truck_location(V, T + 1, N) :- do(V, T, load), truck_location(V, T, N).
+truck_battery(V, T + 1, B, Bmax) :- do(V, T, load), truck_battery(V, T, B, Bmax).
+truck_load(V, T + 1, L + 1, Lmax) :- do(V, T, load), truck_load(V, T, L, Lmax).
+
+% Effect of warehouse-related states
+warehouse_tracker(N, T + 1, L - 1) :- do(V, T, load), warehouse_tracker(N, T, L).
+
 
 
 %*
@@ -196,6 +213,14 @@ Explanation (max 100 words):
 % ::::::::: ACTION: MOVE ::::::::: %
 % A truck can only move to a node that is adjacent to its current location
 :- do(V, T, move(M)), truck_location(V, T, N), not edge(N, M).
+
+% ::::::::: ACTION: LOAD ::::::::: %
+% A truck can only be loaded at a warehouse location and
+% if the warehouse has atleast one package to be loaded
+% and if the truck has enough capacity to load the package
+:- do(V, T, load), warehouse_tracker(N, T, L), L < 1.
+:- do(V, T, load), truck_load(V, T, L, Lmax), L > Lmax.
+:- do(V, T, load), warehouse_tracker(N, T, L), not warehouse_location(N).
 
 
 % ::::::::: ADDITIONAL CONSTRAINTS ::::::::: %
