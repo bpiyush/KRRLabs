@@ -98,6 +98,9 @@ action(load).
 % unload    : unload a truck at a node
 action(unload).
 
+% charge    : charge a truck at a charging station
+action(charge).
+
 
 %*
 GENERATE A SEQUENCE OF ACTIONS:
@@ -223,6 +226,19 @@ warehouse_tracker(N, T + 1, L) :- do(V, T, unload), warehouse_tracker(N, T, L).
 delivery_tracker(N, T + 1, R - 1) :- do(V, T, unload), delivery_tracker(N, T, R).
 
 
+% ::::::::: ACTION: CHARGE ::::::::: %
+
+% Effect on truck-related states
+truck_location(V, T + 1, N) :- do(V, T, charge), truck_location(V, T, N).
+truck_battery(V, T + 1, B + 1, Bmax) :- do(V, T, charge), truck_battery(V, T, B, Bmax).
+truck_load(V, T + 1, L, Lmax) :- do(V, T, charge), truck_load(V, T, L, Lmax).
+
+% Effect of warehouse-related states
+warehouse_tracker(N, T + 1, L) :- do(V, T, charge), warehouse_tracker(N, T, L).
+
+% Effect of delivery-related states
+delivery_tracker(N, T + 1, R - 1) :- do(V, T, charge), delivery_tracker(N, T, R).
+
 %*
 RESTRICTIONS ON THE ACTIONS:
 - Restrict the actions taken by the trucks, based on the state of the world
@@ -243,14 +259,19 @@ Explanation (max 100 words):
 % if the warehouse has atleast one package to be loaded
 % and if the truck has enough capacity to load the package
 :- do(V, T, load), warehouse_tracker(N, T, L), L < 1.
-:- do(V, T, load), truck_load(V, T, L, Lmax), L > Lmax.
-:- do(V, T, load), warehouse_tracker(N, T, L), not warehouse_location(N).
+:- do(V, T, load), truck_load(V, T, L, Lmax), L >= Lmax.
+:- do(V, T, load), truck_location(V, T, N), warehouse_tracker(N, T, L), not warehouse_location(N).
 
 % ::::::::: ACTION: UNLOAD ::::::::: %
 % If it is at a delivery location that still needs some packages,
 % and the truck has at least one package to be unloaded
 :- do(V, T, unload), delivery_tracker(N, T, R), R < 1. % if requirement is 0, then you cannot unload
 :- do(V, T, unload), truck_load(V, T, L, Lmax), L < 1. % if load is 0, then you cannot unload
+
+% ::::::::: ACTION: CHARGE ::::::::: %
+% If it is at a charging station, and the battery is not at full capacity
+:- do(V, T, charge), truck_battery(V, T, B, Bmax), B >= Bmax.
+:- do(V, T, charge), truck_location(V, T, N), not charging_station(N).
 
 
 % ::::::::: ADDITIONAL CONSTRAINTS ::::::::: %
@@ -325,6 +346,7 @@ def on_model(model):
     locations = dict()
     batteries = dict()
     loads = dict()
+    warehouse = dict()
 
     for atom in model.symbols(atoms=True):
         if atom.name == "do":
@@ -363,6 +385,17 @@ def on_model(model):
             truck = atom.arguments[0].number
             battery = str(atom.arguments[2])
             loads[time][truck - 1] = battery
+
+        if atom.name == "warehouse_tracker":
+            time = atom.arguments[1].number
+            if time not in loads:
+                warehouse[time] = ""
+
+            node = atom.arguments[0].number
+            if node not in [7]:
+                continue
+            requirement = str(atom.arguments[2])
+            warehouse[time] = str(requirement)
     
     for time in actions:
         actions[time] = [x.ljust(10) for x in actions[time]]
@@ -380,6 +413,9 @@ def on_model(model):
         loads[time] = [x.ljust(3) for x in loads[time]]
         loads[time] = "\t".join(loads[time])
 
+    print()
+    print("-" * 80)
+    print("-" * 80)
     print("Pretty printed answer set:")
 
     print(":" * 30 + " ACTIONS " + ":" * 30)
@@ -409,7 +445,15 @@ def on_model(model):
 
     for time in time_steps:
         print(f"- At time step {time} load:\t  {loads[time]}")
+    
+    print(":" * 30 + " WAREHOUSE " + ":" * 30)
+    time_steps = [time for time in warehouse]
+    time_steps.sort()
 
+    for time in time_steps:
+        print(f"- At time step {time} load:\t  {warehouse[time]}")
+
+    print("-" * 80)
     print("-" * 80)
 
 def main(prg):
