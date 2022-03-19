@@ -135,7 +135,7 @@ truck_load(2, 1, 0, 2).
 truck_battery(2, 1, 7, 10).
 
 % truck_location(V, T, N) : truck(V), time(T), node(N), V = 3, T = 1, N = 13.
-truck_location(3, 1, 12).
+truck_location(3, 1, 13).
 truck_load(3, 1, 0, 3).
 truck_battery(3, 1, 10, 10).
 
@@ -160,8 +160,8 @@ Explanation (max 100 words):
 % Effect on truck-related states
 % Location, load, battery of the truck remain the same
 truck_location(V, T + 1, N) :- do(V, T, wait), truck_location(V, T, N).
-truck_battery(V, T + 1, B) :- do(V, T, wait), truck_battery(V, T, B).
-truck_load(V, T + 1, L) :- do(V, T, wait), truck_load(V, T, L).
+truck_battery(V, T + 1, B, Bmax) :- do(V, T, wait), truck_battery(V, T, B, Bmax).
+truck_load(V, T + 1, L, Lmax) :- do(V, T, wait), truck_load(V, T, L, Lmax).
 
 % Effect of warehouse-related states
 
@@ -173,9 +173,9 @@ truck_load(V, T + 1, L) :- do(V, T, wait), truck_load(V, T, L).
 % Location of the truck changes
 truck_location(V, T + 1, M) :- do(V, T, move(M)), truck_location(V, T, N).
 % Battery of the truck decreases
-truck_battery(V, T + 1, B - 1) :- do(V, T, move(M)), truck_battery(V, T, B).
+truck_battery(V, T + 1, B - 1, Bmax) :- do(V, T, move(M)), truck_battery(V, T, B, Bmax).
 % Load of the truck does not change
-truck_load(V, T + 1, L) :- do(V, T, move(M)), truck_load(V, T, L).
+truck_load(V, T + 1, L, Lmax) :- do(V, T, move(M)), truck_load(V, T, L, Lmax).
 
 % Effect of warehouse-related states
 
@@ -190,8 +190,25 @@ Explanation (max 100 words):
 [WRITE YOUR EXPLANATION HERE]
 *%
 
+% ::::::::: ACTION: WAIT ::::::::: %
+% No restrictions on the "wait" action
+
+% ::::::::: ACTION: MOVE ::::::::: %
+% A truck can only move to a node that is adjacent to its current location
+:- do(V, T, move(M)), truck_location(V, T, N), not edge(N, M).
 
 
+% ::::::::: ADDITIONAL CONSTRAINTS ::::::::: %
+
+% A truck cannot move to another node if its battery level is empty
+:- do(V, T, move(M)), truck_battery(V, T, B, Bmax), B < 1.
+
+% At each location, there can be at most one truck at the same time.
+:- truck_location(V1, T, N), truck_location(V2, T, N), V1 != V2.
+
+% Trucks cannot pass each other on a piece of road—e.g.,
+% trucks at adjacent locations cannot swap places in a single time step
+:- truck_location(V1, T, N1), truck_location(V2, T, N2), edge(N1, N2), do(V1, T, move(N2)), do(V2, T, move(N2)).
 
 %*
 GOAL CONDITIONS:
@@ -239,6 +256,7 @@ THE END
 % #show do/3.
 % #show truck_location/3.
 #show truck/1.
+% #show truck_battery/3.
 
 %*
 PRETTY PRINTING
@@ -250,6 +268,8 @@ import clingo
 def on_model(model):
     actions = dict()
     locations = dict()
+    batteries = dict()
+    loads = dict()
 
     for atom in model.symbols(atoms=True):
         if atom.name == "do":
@@ -271,6 +291,23 @@ def on_model(model):
             location = str(atom.arguments[2])
             locations[time][truck - 1] = location
 
+        if atom.name == "truck_battery":
+            time = atom.arguments[1].number
+            if time not in batteries:
+                batteries[time] = ["", "", ""]
+
+            truck = atom.arguments[0].number
+            battery = str(atom.arguments[2])
+            batteries[time][truck - 1] = battery
+
+        if atom.name == "truck_load":
+            time = atom.arguments[1].number
+            if time not in loads:
+                loads[time] = ["", "", ""]
+
+            truck = atom.arguments[0].number
+            battery = str(atom.arguments[2])
+            loads[time][truck - 1] = battery
     
     for time in actions:
         actions[time] = [x.ljust(10) for x in actions[time]]
@@ -280,12 +317,20 @@ def on_model(model):
         locations[time] = [x.ljust(3) for x in locations[time]]
         locations[time] = "\t".join(locations[time])
 
-    time_steps = [time for time in actions]
-    time_steps.sort()
+    for time in batteries:
+        batteries[time] = [x.ljust(3) for x in batteries[time]]
+        batteries[time] = "\t".join(batteries[time])
+
+    for time in loads:
+        loads[time] = [x.ljust(3) for x in loads[time]]
+        loads[time] = "\t".join(loads[time])
 
     print("Pretty printed answer set:")
 
     print(":" * 30 + " ACTIONS " + ":" * 30)
+    time_steps = [time for time in actions]
+    time_steps.sort()
+
     for time in time_steps:
         print(f"- At time step {time} do:\t  {actions[time]}")
 
@@ -295,7 +340,21 @@ def on_model(model):
 
     for time in time_steps:
         print(f"- At time step {time} location:\t  {locations[time]}")
-    
+
+    print(":" * 30 + " BATTERIES " + ":" * 30)
+    time_steps = [time for time in batteries]
+    time_steps.sort()
+
+    for time in time_steps:
+        print(f"- At time step {time} battery:\t  {batteries[time]}")
+
+    print(":" * 30 + " LOADS " + ":" * 30)
+    time_steps = [time for time in loads]
+    time_steps.sort()
+
+    for time in time_steps:
+        print(f"- At time step {time} load:\t  {loads[time]}")
+
     print("-" * 80)
 
 def main(prg):
