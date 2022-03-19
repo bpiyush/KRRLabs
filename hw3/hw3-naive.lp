@@ -258,15 +258,16 @@ Explanation (max 100 words):
 % A truck can only be loaded at a warehouse location and
 % if the warehouse has atleast one package to be loaded
 % and if the truck has enough capacity to load the package
-:- do(V, T, load), warehouse_tracker(N, T, L), L < 1.
-:- do(V, T, load), truck_load(V, T, L, Lmax), L >= Lmax.
-:- do(V, T, load), truck_location(V, T, N), warehouse_tracker(N, T, L), not warehouse_location(N).
+:- do(V, T, load), truck_load(V, T, L, Lmax), warehouse_tracker(N, T, L), L < 1.
+:- do(V, T, load), truck_load(V, T, L, Lmax), warehouse_tracker(N, T, L), L + 1 > Lmax.
+:- do(V, T, load), truck_location(V, T, N), not warehouse_location(N).
 
 % ::::::::: ACTION: UNLOAD ::::::::: %
 % If it is at a delivery location that still needs some packages,
 % and the truck has at least one package to be unloaded
 :- do(V, T, unload), delivery_tracker(N, T, R), R < 1. % if requirement is 0, then you cannot unload
 :- do(V, T, unload), truck_load(V, T, L, Lmax), L < 1. % if load is 0, then you cannot unload
+:- do(V, T, unload), truck_location(V, T, N), not delivery_location(N).
 
 % ::::::::: ACTION: CHARGE ::::::::: %
 % If it is at a charging station, and the battery is not at full capacity
@@ -294,6 +295,8 @@ Explanation (max 100 words):
 [WRITE YOUR EXPLANATION HERE]
 *%
 
+% 1. All required deliveries must have been performed.
+% :- delivery_tracker(N, T, R), R > 0.
 
 
 
@@ -333,6 +336,7 @@ THE END
 % #show truck_location/3.
 #show truck/1.
 % #show truck_battery/3.
+#show delivery_tracker/3.
 
 %*
 PRETTY PRINTING
