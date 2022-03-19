@@ -121,7 +121,7 @@ INITIAL STATE:
 
 % ::::::: TRUCKS ::::::: %
 % - truck_location(V T, N) : the location of truck V at time T is node N
-% - truck_load(V, T, C, Cmax)    : the load of truck V at time T is C with a maximum capacity of Cmax
+% - truck_load(V, T, L, Lmax)    : the load of truck V at time T is L with a maximum capacity of Lmax
 % - truck_battery(V, T, B, Bmax)    : the battery of truck V at time T is B with a maximum battery Bmax
 
 % truck_location(V, T, N) : truck(V), time(T), node(N), V = 1, T = 1, N = 11.
@@ -155,7 +155,31 @@ Explanation (max 100 words):
 [WRITE YOUR EXPLANATION HERE]
 *%
 
+% ::::::::: ACTION: WAIT ::::::::: %
 
+% Effect on truck-related states
+% Location, load, battery of the truck remain the same
+truck_location(V, T + 1, N) :- do(V, T, wait), truck_location(V, T, N).
+truck_battery(V, T + 1, B) :- do(V, T, wait), truck_battery(V, T, B).
+truck_load(V, T + 1, L) :- do(V, T, wait), truck_load(V, T, L).
+
+% Effect of warehouse-related states
+
+% Effect of delivery-related states
+
+% ::::::::: ACTION: MOVE ::::::::: %
+
+% Effect on truck-related states
+% Location of the truck changes
+truck_location(V, T + 1, M) :- do(V, T, move(M)), truck_location(V, T, N).
+% Battery of the truck decreases
+truck_battery(V, T + 1, B - 1) :- do(V, T, move(M)), truck_battery(V, T, B).
+% Load of the truck does not change
+truck_load(V, T + 1, L) :- do(V, T, move(M)), truck_load(V, T, L).
+
+% Effect of warehouse-related states
+
+% Effect of delivery-related states
 
 
 %*
@@ -212,7 +236,9 @@ THE END
 % #show delivery_location/2.
 % #show warehouse_location/2.
 % #show parking_location/1.
-#show do/3.
+% #show do/3.
+% #show truck_location/3.
+#show truck/1.
 
 %*
 PRETTY PRINTING
@@ -235,20 +261,42 @@ def on_model(model):
             truck = atom.arguments[0].number
             action = str(atom.arguments[2])
             actions[time][truck - 1] = action
+
+        if atom.name == "truck_location":
+            time = atom.arguments[1].number
+            if time not in locations:
+                locations[time] = ["", "", ""]
+
+            truck = atom.arguments[0].number
+            location = str(atom.arguments[2])
+            locations[time][truck - 1] = location
+
     
     for time in actions:
         actions[time] = [x.ljust(10) for x in actions[time]]
         actions[time] = "\t".join(actions[time])
 
+    for time in locations:
+        locations[time] = [x.ljust(3) for x in locations[time]]
+        locations[time] = "\t".join(locations[time])
 
     time_steps = [time for time in actions]
     time_steps.sort()
 
     print("Pretty printed answer set:")
 
-    print(":::::::: ACTIONS :::::::")
+    print(":" * 30 + " ACTIONS " + ":" * 30)
     for time in time_steps:
         print(f"- At time step {time} do:\t  {actions[time]}")
+
+    print(":" * 30 + " LOCATIONS " + ":" * 30)
+    time_steps = [time for time in locations]
+    time_steps.sort()
+
+    for time in time_steps:
+        print(f"- At time step {time} location:\t  {locations[time]}")
+    
+    print("-" * 80)
 
 def main(prg):
     prg.ground([("base", [])])
