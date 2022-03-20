@@ -265,8 +265,23 @@ all_trucks_parked(T) :- not some_truck_not_parked(_, T), time(T).
 packages_left(V, T) :- truck(V), truck_load(V, T, L, Lmax), L > 0.
 no_packages_on_trucks(T) :- not packages_left(_, T), time(T).
 
+% 4 .Each truck must have a battery level that allows
+% it to reach some charging station—e.g., if the shortest path
+% from the truck to a charging station has length
+% then the truck’s battery level must be at least
+#const n_nodes=13.
+num(1..n_nodes).
+shortest_dist(A, A, 0) :- node(A).
+shortest_dist(A, B, D + 1) :- edge(A, C), shortest_dist(C, B, D), num(D+1), not shortest_dist(A, B, D'):D' <= D, num(D').
+% :- truck_location(V, T, N), charging_station(N), not shortest_dist(N, N, D), num(D).
+some_truck_with_not_enough_battery(V, T) :- truck(V), truck_battery(V, T, B, Bmax), truck_location(V, T, N),
+    charging_station(S), B < D, shortest_dist(N, S, D), num(D).
+all_trucks_charged(T) :- not some_truck_with_not_enough_battery(_, T), time(T).
+
+
 % goal_reached(T) :- all_packages_delivered(T), time(T).
-goal_reached(T) :- all_packages_delivered(T), all_trucks_parked(T), no_packages_on_trucks(T), time(T).
+% goal_reached(T) :- all_packages_delivered(T), all_trucks_parked(T), no_packages_on_trucks(T), time(T).
+goal_reached(T) :- all_packages_delivered(T), all_trucks_parked(T), no_packages_on_trucks(T), all_trucks_charged(T), time(T).
 
 :- not goal_reached(t).
 
@@ -308,7 +323,8 @@ THE END
 % #show truck_location/3.
 #show truck/1.
 % #show truck_battery/3.
-#show delivery_tracker/3.
+% #show delivery_tracker/3.
+% #show shortest_dist/3.
 
 %*
 PRETTY PRINTING
