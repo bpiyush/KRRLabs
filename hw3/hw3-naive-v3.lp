@@ -297,6 +297,10 @@ Explanation (max 100 words):
 *%
 
 
+first_time_goal_reached(T) :- goal_reached(T), not goal_reached(T-1).
+
+#minimize {T : first_time_goal_reached(T)}.
+
 
 
 %*
@@ -321,10 +325,11 @@ THE END
 % #show parking_location/1.
 % #show do/3.
 % #show truck_location/3.
-#show truck/1.
+% #show truck/1.
 % #show truck_battery/3.
 % #show delivery_tracker/3.
 % #show shortest_dist/3.
+#show first_time_goal_reached/1.
 
 %*
 PRETTY PRINTING
