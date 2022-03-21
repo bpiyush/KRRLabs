@@ -40,7 +40,6 @@ edge(3,10).
 edge(1,10).
 edge(1,3).
 edge(3,5).
-% ...
 
 % Edges are undirected, so include their reverse
 edge(X,Y) :- edge(Y,X).
@@ -89,19 +88,19 @@ ACTIONS:
 % For each truck, define the possible actions.
 % Actions are represented by the predicates:
 
-% wait      : make a truck wait at its current location
+% wait: make a truck wait at its current location
 action(wait).
 
-% move(N)   : move a truck to node N
+% move(N): move a truck to node N
 action(move(N)) :- node(N).
 
-% load      : load a truck at a node
+% load: load a truck at a node
 action(load).
 
-% unload    : unload a truck at a node
+% unload: unload a truck at a node
 action(unload).
 
-% charge    : charge a truck at a charging station
+% charge: charge a truck at a charging station
 action(charge).
 
 
@@ -128,8 +127,10 @@ INITIAL STATE:
 
 % In order to define state at a given time,
 % we define the following state variables:
+% These are split for trucks, warehouse and delivery location.
 
 % ::::::: TRUCKS ::::::: %
+
 % - truck_location(V T, N) : the location of truck V at time T is node N
 % - truck_load(V, T, L, Lmax)    : the load of truck V at time T is L with a maximum capacity of Lmax
 % - truck_battery(V, T, B, Bmax)    : the battery of truck V at time T is B with a maximum battery Bmax
@@ -147,10 +148,12 @@ truck_load(3, 1, 0, 3).
 truck_battery(3, 1, 10, 10).
 
 % ::::::: WAREHOUSES ::::::: %
+
 % - warehouse_tracker(W, T, L) : the load of warehouse node W at time T is L
 warehouse_tracker(7, 1, 5).
 
 % ::::::: DELIVERIES ::::::: %
+
 % - delivery_tracker(D, T, R) : the requirement of delivery node D at time T is R
 delivery_tracker(1, 1, 2).
 delivery_tracker(6, 1, 2).
@@ -163,7 +166,18 @@ SUBSEQUENT STATES OF THE WORLD:
 - Encode the subsequent states, based on the actions taken
 
 Explanation (max 100 words):
-[WRITE YOUR EXPLANATION HERE]
+
+Summary:
+- For each state variable, we define how it changes when a particular action is taken.
+
+Examples:
+- The truck location does not change when a truck chooses one of 
+(wait, load, unload, charge) actions. But it changes when a truck moves to a new node.
+- For tracking state of the warehouse, notably, it does not change when *all* the trucks
+are not involved in loading. It changes when there exists a truck that loads.
+- Likewise for delivery trackers, it does not change when *a*. trucks are not involved in
+unloading. It changes when there exists a truck that unloads.
+
 *%
 
 % Effect on truck location
@@ -203,7 +217,19 @@ RESTRICTIONS ON THE ACTIONS:
 - Restrict the actions taken by the trucks, based on the state of the world
 
 Explanation (max 100 words):
-[WRITE YOUR EXPLANATION HERE]
+
+Summary:
+- For each action, we define the restrictions on the actions that can be taken.
+- We use constraints in ASP to define the restrictions.
+
+Examples:
+- A truck cannot move to a node that isn't neighbor of it's current node.
+- A truck cannot unload if it has no load or it is not at delivery location and
+the delivery location has pending requirements.
+- A truck cannot load if it has enough capacity and is not at the warehouse
+and the warehouse has atleast one load.
+- A truck cannot charge if it's not at charging station and it does not have
+a full battery.
 *%
 
 % ::::::::: ACTION: WAIT ::::::::: %
@@ -251,7 +277,16 @@ GOAL CONDITIONS:
 - Constraints that express that the goal must be reached
 
 Explanation (max 100 words):
-[WRITE YOUR EXPLANATION HERE]
+
+Summary:
+- We define the goal conditions for the problem. For each goal,
+we define it as a predicate that we track at each time step, like
+
+single_goal(T)
+
+denoting if single_goal is reached at time T. To satisfy all of them, we 
+have a predicate goal_reached(T) that returns true if all the goals are
+reached at time T. Details for each individual goals are provided in in-line comments.
 *%
 
 % 1. All required deliveries must have been performed.
@@ -273,16 +308,18 @@ no_packages_on_trucks(T) :- not packages_left(_, T), time(T).
 num(1..n_nodes).
 shortest_dist(A, A, 0) :- node(A).
 shortest_dist(A, B, D + 1) :- edge(A, C), shortest_dist(C, B, D), num(D+1), not shortest_dist(A, B, D'):D' <= D, num(D').
-% :- truck_location(V, T, N), charging_station(N), not shortest_dist(N, N, D), num(D).
 some_truck_with_not_enough_battery(V, T) :- truck(V), truck_battery(V, T, B, Bmax), truck_location(V, T, N),
     charging_station(S), B < D, shortest_dist(N, S, D), num(D).
 all_trucks_charged(T) :- not some_truck_with_not_enough_battery(_, T), time(T).
 
 
-% goal_reached(T) :- all_packages_delivered(T), time(T).
-% goal_reached(T) :- all_packages_delivered(T), all_trucks_parked(T), no_packages_on_trucks(T), time(T).
-goal_reached(T) :- all_packages_delivered(T), all_trucks_parked(T), no_packages_on_trucks(T), all_trucks_charged(T), time(T).
-
+% Make sure the goal is reached and before the time limit t=25
+goal_reached(T) :- 
+    all_packages_delivered(T),
+    all_trucks_parked(T),
+    no_packages_on_trucks(T),
+    all_trucks_charged(T),
+    time(T).
 :- not goal_reached(t).
 
 
@@ -293,12 +330,14 @@ OPTIMIZATION:
   number of time steps
 
 Explanation (max 100 words):
-[WRITE YOUR EXPLANATION HERE]
+- We find the optimal time at which a valid solution is found as follows:
+- We find a time T s.t. goal is reached at time T but it has not reached at time (T - 1).
+This given the minimum number of time steps to reach the goal.
+
 *%
 
 
 first_time_goal_reached(T) :- goal_reached(T), not goal_reached(T-1).
-
 #minimize {T : first_time_goal_reached(T)}.
 
 
