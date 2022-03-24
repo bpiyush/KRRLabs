@@ -181,32 +181,44 @@ unloading. It changes when there exists a truck that unloads.
 *%
 
 % Effect on truck location
+% No change when a truck chooses one of (wait, load, unload, charge) actions
 truck_location(V, T + 1, N) :- do(V, T, wait), truck_location(V, T, N), time(T), time(T + 1), truck(V), node(N).
 truck_location(V, T + 1, N) :- do(V, T, load), truck_location(V, T, N), time(T), time(T + 1), truck(V), node(N).
 truck_location(V, T + 1, N) :- do(V, T, unload), truck_location(V, T, N), time(T), time(T + 1), truck(V), node(N).
 truck_location(V, T + 1, N) :- do(V, T, charge), truck_location(V, T, N), time(T), time(T + 1), truck(V), node(N).
+% move it to a new node on action move(M)
 truck_location(V, T + 1, M) :- do(V, T, move(M)), truck_location(V, T, N), time(T), time(T + 1), truck(V), node(N).
 
 % Effect on truck battery
+% No change when a truck chooses one of (wait, load, unload) actions
 truck_battery(V, T + 1, B, Bmax) :- do(V, T, wait), truck_battery(V, T, B, Bmax), time(T), time(T + 1), truck(V), node(N).
 truck_battery(V, T + 1, B, Bmax) :- do(V, T, load), truck_battery(V, T, B, Bmax), time(T), time(T + 1), truck(V), node(N).
 truck_battery(V, T + 1, B, Bmax) :- do(V, T, unload), truck_battery(V, T, B, Bmax), time(T), time(T + 1), truck(V), node(N).
+% Increase the battery when a truck charges
 truck_battery(V, T + 1, B + 1, Bmax) :- do(V, T, charge), truck_battery(V, T, B, Bmax), time(T), time(T + 1), truck(V), node(N).
+% Decrease the battery when a truck moves
 truck_battery(V, T + 1, B - 1, Bmax) :- do(V, T, move(M)), truck_battery(V, T, B, Bmax), time(T), time(T + 1), truck(V), node(N).
 
 % Effect on truck load
+% No change when a truck chooses one of (wait, move, charge) actions
 truck_load(V, T + 1, L, Lmax) :- do(V, T, wait), truck_load(V, T, L, Lmax), time(T), time(T + 1), truck(V), node(N).
+% Increase the load when a truck loads
 truck_load(V, T + 1, L + 1, Lmax) :- do(V, T, load), truck_load(V, T, L, Lmax), time(T), time(T + 1), truck(V), node(N).
+% Decrease the load when a truck unloads
 truck_load(V, T + 1, L - 1, Lmax) :- do(V, T, unload), truck_load(V, T, L, Lmax), time(T), time(T + 1), truck(V), node(N).
 truck_load(V, T + 1, L, Lmax) :- do(V, T, charge), truck_load(V, T, L, Lmax), time(T), time(T + 1), truck(V), node(N).
 truck_load(V, T + 1, L, Lmax) :- do(V, T, move(M)), truck_load(V, T, L, Lmax), time(T), time(T + 1), truck(V), node(N).
 
 % Effect on warehouse tracker
+% If none of the trucks are involved in loading, the warehouse tracker does not change
 warehouse_tracker(N, T + 1, L) :- not do(V, T, load) : truck(V); warehouse_tracker(N, T, L), time(T).
+% If there is a truck that loads, the warehouse load decreases
 warehouse_tracker(N, T + 1, L - 1) :- do(V, T, load), truck(V), warehouse_tracker(N, T, L).
 
 % Effect on delivery tracker
+% If none of the trucks are involved in unloading, the delivery tracker does not change
 delivery_tracker(N, T + 1, R) :- not do(V, T, unload) : truck(V); delivery_tracker(N, T, R), time(T).
+% If there is a truck that unloads, the delivery requirement decreases since 1 packages is delivered
 delivery_tracker(N, T + 1, R - 1) :- do(V, T, unload), truck_location(V, T, N), delivery_tracker(N, T, R), truck_load(V, T, B, Bmax), delivery_location(N).
 
 
@@ -304,12 +316,16 @@ no_packages_on_trucks(T) :- not packages_left(_, T), time(T).
 % it to reach some charging station—e.g., if the shortest path
 % from the truck to a charging station has length
 % then the truck’s battery level must be at least
+
+% Snippet to compute the shortest path from one node to another
 #const n_nodes=13.
 num(1..n_nodes).
 shortest_dist(A, A, 0) :- node(A).
 shortest_dist(A, B, D + 1) :- edge(A, C), shortest_dist(C, B, D), num(D+1), not shortest_dist(A, B, D'):D' <= D, num(D').
+% Defines if there is a truck that does not have sufficient battery to reach charging station
 some_truck_with_not_enough_battery(V, T) :- truck(V), truck_battery(V, T, B, Bmax), truck_location(V, T, N),
     charging_station(S), B < D, shortest_dist(N, S, D), num(D).
+% We do not want any truck to have a battery level that does not allows it to reach a charging station
 all_trucks_charged(T) :- not some_truck_with_not_enough_battery(_, T), time(T).
 
 
